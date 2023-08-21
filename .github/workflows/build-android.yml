@@ -64,7 +64,7 @@ jobs:
       
       - run: mkdir android\app\src\main\assets
       
-      - run: npm run-script android && cd android && chmod  777 ./gradlew && ./gradlew --no-daemon assembleDebug
+      - run: npm run-script android-apk && cd android && chmod  777 ./gradlew && ./gradlew --no-daemon assembleDebug
       
       - shell: cmd
         run: cd "android\app\build\outputs\apk" && dir /s
