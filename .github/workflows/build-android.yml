@@ -1,0 +1,91 @@
+name: android-gradle-prebuilt-release-actions-workflow
+on:
+  push:
+    # Sequence of patterns matched against refs/tags
+    tags:
+      - 'v*' # Push events to matching v*, i.e. v1.0, v20.15.10
+      - 'c*' # Push events to matching v*, i.e. v1.0, v20.15.10
+
+jobs:
+  build:
+    name: Create Release
+    runs-on: windows-latest
+    steps:
+      - name: Cancel Previous Runs
+        uses: styfle/cancel-workflow-action@0.9.0
+        with:
+          access_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/checkout@v3
+#      - name: Get Last Commit Date
+#        id: date
+#        run: echo "::set-output name=date::$(git log -1 --format="%at" | xargs -I{} date -d @{} +%Y%m%d_%H%M%S)"
+
+#     - name: Get Changelog
+#       id: changelog
+#       run: |
+#         CHANGELOG_ENV=$(git log --pretty=format:"%an: %s" | ./scripts/filter_changelog.py | jq --raw-input --slurp '.' | sed 's/^\"\"$/CANCEL/g')
+#         echo "$CHANGELOG_ENV"
+#         echo "::set-output name=RELEASE_BODY::$CHANGELOG_ENV"
+#     - name: Debug
+#       run: |
+#         echo "RELEASE_BODY: " ${{ steps.changelog.outputs.RELEASE_BODY }}
+        
+#     - name: Kick off Cancelling(if need)
+#       uses: andymckay/cancel-action@0.2
+#       if: steps.changelog.outputs.RELEASE_BODY == 'CANCEL'
+
+#     - name: Waiting for Cancellation
+#       run: sleep 30
+#       if: steps.changelog.outputs.RELEASE_BODY == 'CANCEL'
+
+#    - uses: actions/cache@v2
+#      with:
+#        path: |
+#          ~/.gradle/caches
+#          ~/.gradle/wrapper
+#        key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+#        restore-keys: |
+#          ${{ runner.os }}-gradle-
+          
+      - uses: actions/setup-java@v2
+        with:
+          distribution: 'adopt'
+          java-version: '11'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v2.0.10
+        
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 16
+
+      - run: npm install
+      
+      - run: mkdir android\app\src\main\assets
+      
+      - run: npm run-script android && cd android && chmod  777 ./gradlew && ./gradlew --no-daemon assembleDebug
+      
+      - shell: cmd
+        run: cd "android\app\build\outputs\apk" && dir /s
+      
+      - name: Release prebuilt
+        uses: ncipollo/release-action@v1
+        with:
+          artifacts: "android/app/build/outputs/apk/debug/app-debug.apk"
+          allowUpdates: true
+          token: ${{ secrets.GITHUB_TOKEN }}
+          
+  #   - name: Upload APKs to Release
+  #     uses: svenstaro/upload-release-action@v2
+  #     with:
+  #       repo_token: ${{ secrets.GITHUB_TOKEN }}
+  #       file: ./k-9/app/build/outputs/apk/debug/*.apk
+  #       tag: 
+  #         overwrite: true
+  #         file_glob: true
+  #         body: |
+  #           Changelog since last release:
+  #           ```
+  #           ${{ fromJSON(steps.changelog.outputs.RELEASE_BODY) }}
+  #           ```
